@@ -159,6 +159,36 @@ type UserInfo struct {
 	claims []byte
 }
 
+// UnmarshalJSON provides a custom implementation of the UnmarshalJSON function that supports the use of
+// a string value for email_verified
+func UnmarshalUserInfoJSON(data []byte, u *UserInfo) error {
+	err1 := json.Unmarshal(data, u)
+	if err1 == nil {
+		return nil
+	}
+	var customUserInfo userInfoStringEmailVerified
+	err2 := json.Unmarshal(data, &customUserInfo)
+	if err2 == nil {
+		u.Subject = customUserInfo.Subject
+		u.Profile = customUserInfo.Profile
+		u.Email = customUserInfo.Email
+		if customUserInfo.EmailVerified == "true" {
+			u.EmailVerified = true
+
+		}
+		return nil
+	}
+
+	return fmt.Errorf("failed to unmarshal userinfo: %v, %v", err1, err2)
+}
+
+type userInfoStringEmailVerified struct {
+	Subject       string `json:"sub"`
+	Profile       string `json:"profile"`
+	Email         string `json:"email"`
+	EmailVerified string `json:"email_verified"`
+}
+
 // Claims unmarshals the raw JSON object claims into the provided object.
 func (u *UserInfo) Claims(v interface{}) error {
 	if u.claims == nil {
@@ -198,7 +228,7 @@ func (p *Provider) UserInfo(ctx context.Context, tokenSource oauth2.TokenSource)
 	}
 
 	var userInfo UserInfo
-	if err := json.Unmarshal(body, &userInfo); err != nil {
+	if err := UnmarshalUserInfoJSON(body, &userInfo); err != nil {
 		return nil, fmt.Errorf("oidc: failed to decode userinfo (raw: \n%s\n): %v", body, err)
 	}
 	userInfo.claims = body
