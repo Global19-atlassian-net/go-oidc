@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/solo-io/go-utils/contextutils"
+
 	"golang.org/x/oauth2"
 	jose "gopkg.in/square/go-jose.v2"
 )
@@ -162,10 +164,6 @@ type UserInfo struct {
 // UnmarshalJSON provides a custom implementation of the UnmarshalJSON function that supports the use of
 // a string value for email_verified
 func UnmarshalUserInfoJSON(data []byte, u *UserInfo) error {
-	err1 := json.Unmarshal(data, u)
-	if err1 == nil {
-		return nil
-	}
 	var customUserInfo userInfoStringEmailVerified
 	err2 := json.Unmarshal(data, &customUserInfo)
 	if err2 == nil {
@@ -176,6 +174,11 @@ func UnmarshalUserInfoJSON(data []byte, u *UserInfo) error {
 			u.EmailVerified = true
 
 		}
+		return nil
+	}
+
+	err1 := json.Unmarshal(data, u)
+	if err1 == nil {
 		return nil
 	}
 
@@ -228,8 +231,9 @@ func (p *Provider) UserInfo(ctx context.Context, tokenSource oauth2.TokenSource)
 	}
 
 	var userInfo UserInfo
+	contextutils.LoggerFrom(ctx).Debugf("decoding user info: %s", body)
 	if err := UnmarshalUserInfoJSON(body, &userInfo); err != nil {
-		return nil, fmt.Errorf("oidc: failed to decode userinfo (raw: \n%s\n): %v", body, err)
+		return nil, fmt.Errorf("oidc: failed to decode userinfo: %v", body, err)
 	}
 	userInfo.claims = body
 	return &userInfo, nil
