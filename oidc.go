@@ -199,7 +199,7 @@ func (p *Provider) UserInfo(ctx context.Context, tokenSource oauth2.TokenSource)
 
 	var userInfo UserInfo
 	if err := json.Unmarshal(body, &userInfo); err != nil {
-		return nil, fmt.Errorf("oidc: failed to decode userinfo: %v", err)
+		return nil, fmt.Errorf("oidc: failed to decode userinfo (raw: \n%s\n): %v", body, err)
 	}
 	userInfo.claims = body
 	return &userInfo, nil
